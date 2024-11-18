@@ -268,6 +268,7 @@ class Engine:
             if self.round is not None and source in self.cm.connections:
                 try:
                     if message is not None and len(message.arguments) > 0:
+                        logging.info(f"_FEDERATION_MODELS_INCLUDED_CALLBACK: round will be updated to {int(message.arguments[0])}")
                         self.cm.connections[source].update_round(int(message.arguments[0])) if message.round in [self.round - 1, self.round] else None
                 except Exception as e:
                     logging.error(f"Error updating round in connection: {e}")
@@ -420,6 +421,7 @@ class Engine:
             await self.aggregator.update_federation_nodes(self.federation_nodes)
             await self._extended_learning_cycle()
 
+            logging.info("AFTER _EXTENDED_LEARNING_CYCLE")
             await self.get_round_lock().acquire_async()
             print_msg_box(msg=f"Round {self.round} of {self.total_rounds} finished.", indent=2, title="Round information")
             await self.aggregator.reset()
@@ -542,13 +544,19 @@ class AggregatorNode(Engine):
 
     async def _extended_learning_cycle(self):
         # Define the functionality of the aggregator node
+        logging.info("BEFORE TESTING")
         await self.trainer.test()
+        logging.info("AFTER TESTING BUT BEFORE TRAINING")
         await self.trainer.train()
+        logging.info("AFTER TRAINING BUT BEFORE INCLUDE_MODEL_IN_BUFFER")
 
         await self.aggregator.include_model_in_buffer(self.trainer.get_model_parameters(), self.trainer.get_model_weight(), source=self.addr, round=self.round)
 
+        logging.info("BEFORE PROPAGATING")
         await self.cm.propagator.propagate("stable")
+        logging.info("AFTER PROPAGATING BUT BEFORE _WAITING_MODEL_UPDATES")
         await self._waiting_model_updates()
+        logging.info("AFTER _WAITING_MODEL_UPDATES")
 
 
 class ServerNode(Engine):

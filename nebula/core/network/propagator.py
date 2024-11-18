@@ -144,6 +144,7 @@ class Propagator:
         round_number = -1 if strategy_id == "initialization" else self.get_round()
 
         for neighbor_addr in eligible_neighbors:
+            logging.info(f"sending model to neighbor: {neighbor_addr}")
             asyncio.create_task(
                 self.cm.send_model(neighbor_addr, round_number, serialized_model, weight)
             )

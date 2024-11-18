@@ -38,7 +38,7 @@ class CommunicationsManager:
     def __init__(self, engine: "Engine"):
         logging.info("🌐  Initializing Communications Manager")
         self._engine = engine
-        self.addr = engine.get_addr()
+        self.addr = engine.get_addr() #eg. participant_0.json["network_args"]["addr"]
         self.host = self.addr.split(":")[0]
         self.port = int(self.addr.split(":")[1])
         self.config = engine.get_config()
@@ -125,15 +125,19 @@ class CommunicationsManager:
             message_wrapper.ParseFromString(data)
             source = message_wrapper.source
             logging.debug(f"📥  handle_incoming_message | Received message from {addr_from} with source {source}")
+            logging.info(f"📥  handle_incoming_message | Received message from {addr_from} with source {source}")
             if source == self.addr:
                 return
             if message_wrapper.HasField("discovery_message"):
+                logging.info(f"incoming message is discovery_message")
                 if await self.include_received_message_hash(hashlib.md5(data).hexdigest()):
                     await self.forwarder.forward(data, addr_from=addr_from)
                     await self.handle_discovery_message(source, message_wrapper.discovery_message)
             elif message_wrapper.HasField("control_message"):
+                logging.info(f"incoming message is control_message")
                 await self.handle_control_message(source, message_wrapper.control_message)
             elif message_wrapper.HasField("federation_message"):
+                logging.info(f"incoming message is federation_message")
                 if await self.include_received_message_hash(hashlib.md5(data).hexdigest()):
                     if self.config.participant["device_args"]["proxy"] or message_wrapper.federation_message.action == nebula_pb2.FederationMessage.Action.Value("FEDERATION_START"):
                         await self.forwarder.forward(data, addr_from=addr_from)
@@ -147,6 +151,7 @@ class CommunicationsManager:
                         await self.forwarder.forward(data, addr_from=addr_from)
                     await self.handle_model_message(source, message_wrapper.model_message)
             elif message_wrapper.HasField("connection_message"):
+                logging.info(f"incoming message is connection_message")
                 await self.handle_connection_message(source, message_wrapper.connection_message)
             else:
                 logging.info(f"Unknown handler for message: {message_wrapper}")
@@ -181,6 +186,7 @@ class CommunicationsManager:
             await self.engine.get_round_lock().acquire_async()
             current_round = self.get_round()
             await self.engine.get_round_lock().release_async()
+            logging.info(f"self.get_round() is: {current_round}")
 
             if message.round != current_round and message.round != -1:
                 logging.info(f"❗️  handle_model_message | Received a model from a different round | Model round: {message.round} | Current round: {current_round}")
@@ -216,6 +222,7 @@ class CommunicationsManager:
                                 f.write("timestamp,source_ip,nodes,round,current_round,cosine,euclidean,minkowski,manhattan,pearson_correlation,jaccard\n")
                             f.write(f"{datetime.now()}, {source}, {message.round}, {current_round}, {cosine_value}, {euclidean_value}, {minkowski_value}, {manhattan_value}, {pearson_correlation_value}, {jaccard_value}\n")
 
+                    logging.info("INCLUDING MODEL IN BUFFER")
                     await self.engine.aggregator.include_model_in_buffer(
                         decoded_model,
                         message.weight,
@@ -287,12 +294,18 @@ class CommunicationsManager:
         logging.info(f"🌐  Starting Communications Manager...")
         await self.deploy_network_engine()
 
+    #set up a network server to manage incoming connections
     async def deploy_network_engine(self):
         logging.info(f"🌐  Deploying Network engine...")
-        self.network_engine = await asyncio.start_server(self.handle_connection_wrapper, self.host, self.port)
+        #returns a server object that manages connections on this IP and port
+        #network_engine listens on the network interface of self.host and listens for incoming connections on self.port
+        self.network_engine = await asyncio.start_server(self.handle_connection_wrapper, self.host, self.port) #host is reader (recieves data from client) and port is writter (send data to client)
         self.network_task = asyncio.create_task(self.network_engine.serve_forever(), name="Network Engine")
         logging.info(f"🌐  Network engine deployed at host {self.host} and port {self.port}")
 
+    #wrapper function to handle incoming requests -> new task for each incoming request
+    #reader: A StreamReader instance, representing the data stream from the client
+    #writer: A StreamWriter instance, representing the data stream to the client
     async def handle_connection_wrapper(self, reader, writer):
         asyncio.create_task(self.handle_connection(reader, writer))
 
@@ -582,6 +595,7 @@ class CommunicationsManager:
             await self.disconnect(dest_addr, mutual_disconnection=False)
 
     async def send_model(self, dest_addr, round, serialized_model, weight=1):
+        logging.info("SENDING MODEL IN SEND_MODEL")
         async with self.semaphore_send_model:
             try:
                 conn = self.connections.get(dest_addr)

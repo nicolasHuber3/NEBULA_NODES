@@ -220,7 +220,7 @@
                     </div>
                     <div class="form-check form-check-inline">
                         <input class="form-check-input" type="radio" name="deploymentRadioOptions" id="physical-devices-radio"
-                            value="physical" disabled>
+                            value="physical">
                         <label class="form-check-label" for="physical-devices-radio">Physical devices</label>
                     </div>
                 </div>
@@ -1019,7 +1019,7 @@
             } else if (document.getElementById("docker-radio").checked) {
                 data["deployment"] = "docker"
             } else {
-                data["deployment"] = "process"
+                data["deployment"] = "physical"
             }
             // Step 3
             data["federation"] = document.getElementById("federationArchitecture").value
@@ -2672,11 +2672,14 @@
                     Graph.graphData().nodes[i].start = true;
                 });
 
+                //SAVE CHANGES BUTTON FOR PARTICIPANTS DETAILS MODAL
                 document.getElementById("participant-modal-save").addEventListener("click", function () {
                     const participant = Graph.graphData().nodes[i];
                     participant.ip = document.getElementById("participant-" + i + "-ip").value;
                     participant.port = document.getElementById("participant-" + i + "-port").value;
                     Graph.graphData(Graph.graphData());
+                    //UPDATE SCENARIO WITH UPDATED NODE IP AND PORT IF NECESSARY
+                    scenarioStorage.replaceScenario();
                 });
 
                 // Create div named "participant-item" and add the elements

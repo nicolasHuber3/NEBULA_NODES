@@ -1145,6 +1145,10 @@ async def nebula_dashboard_deployment_run(request: Request, background_tasks: Ba
     return RedirectResponse(url="/nebula/dashboard", status_code=303)
     # return Response(content="Success", status_code=200)
 
+@app.get("/test")
+async def test():
+    return {"message": "Hello World!"}
+
 
 if __name__ == "__main__":
     # Parse args from command line
