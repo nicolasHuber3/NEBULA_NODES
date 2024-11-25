@@ -291,11 +291,13 @@ class CommunicationsManager:
         return self.engine.get_round()
 
     async def start(self):
+        print("STARTING COMMUNICAITONS MANAGER -> DEPLOYING FEDERATION")
         logging.info(f"🌐  Starting Communications Manager...")
         await self.deploy_network_engine()
 
     #set up a network server to manage incoming connections
     async def deploy_network_engine(self):
+        print("DEPLOYING NETOWORK ENGINE")
         logging.info(f"🌐  Deploying Network engine...")
         #returns a server object that manages connections on this IP and port
         #network_engine listens on the network interface of self.host and listens for incoming connections on self.port
@@ -611,6 +613,7 @@ class CommunicationsManager:
                 await self.disconnect(dest_addr, mutual_disconnection=False)
 
     async def establish_connection(self, addr, direct=True, reconnect=False):
+        print(f"🔗  [outgoing] Establishing connection with {addr} (direct: {direct})")
         logging.info(f"🔗  [outgoing] Establishing connection with {addr} (direct: {direct})")
 
         async def process_establish_connection(addr, direct, reconnect):
@@ -643,8 +646,11 @@ class CommunicationsManager:
                     logging.info(f"🔗  [outgoing] Including {addr} in pending connections: {self.pending_connections}")
 
                 logging.info(f"🔗  [outgoing] Openning connection with {host}:{port}")
+                print(f"🔗  [outgoing] Openning connection with {host}:{port}")
                 reader, writer = await asyncio.open_connection(host, port)
                 logging.info(f"🔗  [outgoing] Connection opened with {writer.get_extra_info('peername')}")
+                print(f"🔗  [outgoing] Connection opened with {writer.get_extra_info('peername')}")
+
 
                 async with self.connections_manager_lock:
                     self.outgoing_connections[addr] = (reader, writer)
@@ -659,6 +665,9 @@ class CommunicationsManager:
 
                 logging.info(f"🔗  [outgoing] Received connection status {connection_status} (from {addr})")
                 logging.info(f"🔗  [outgoing] Connections: {self.connections}")
+
+                print(f"🔗  [outgoing] Received connection status {connection_status} (from {addr})")
+                print(f"🔗  [outgoing] Connections: {self.connections}")
 
                 if connection_status == "CONNECTION//CLOSE":
                     logging.info(f"🔗  [outgoing] Connection with {addr} closed")

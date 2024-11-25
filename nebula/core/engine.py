@@ -54,6 +54,9 @@ def print_banner():
                         https://github.com/enriquetomasmb/nebula
                 """
     logging.info(f"\n{banner}\n")
+    print(f"\n{banner}\n")
+
+
 
 
 class Engine:
@@ -68,6 +71,7 @@ class Engine:
         poisoned_ratio=0,
         noise_type="gaussian",
     ):
+        import pdb; pdb.set_trace()
         self.config = config
         self.idx = config.participant["device_args"]["idx"]
         self.experiment_name = config.participant["scenario_args"]["name"]
@@ -77,7 +81,8 @@ class Engine:
         self.role = config.participant["device_args"]["role"]
         self.name = config.participant["device_args"]["name"]
         self.docker_id = config.participant["device_args"]["docker_id"]
-        self.client = docker.from_env()
+        if config.participant["scenario_args"]["deployment"] != "physical":
+            self.client = docker.from_env()
 
         print_banner()
 
@@ -284,10 +289,12 @@ class Engine:
         logging.info(f"Started trainer module...")
 
     async def start_communications(self):
+        print("STARTING COMMUNICATION") 
         logging.info(f"Neighbors: {self.config.participant['network_args']['neighbors']}")
         logging.info(f"💤  Cold start time: {self.config.participant['misc_args']['grace_time_connection']} seconds before connecting to the network")
         await asyncio.sleep(self.config.participant["misc_args"]["grace_time_connection"])
         await self.cm.start()
+        print("COMMUNICATION MANAGER STARTED")
         initial_neighbors = self.config.participant["network_args"]["neighbors"].split()
         for i in initial_neighbors:
             addr = f"{i.split(':')[0]}:{i.split(':')[1]}"
@@ -296,6 +303,7 @@ class Engine:
         while not self.cm.verify_connections(initial_neighbors):
             await asyncio.sleep(1)
         current_connections = await self.cm.get_addrs_current_connections()
+        print(f"CONNECTIONS VERIFIED: {current_connections}")
         logging.info(f"Connections verified: {current_connections}")
         await self._reporter.start()
         await self.cm.deploy_additional_services()

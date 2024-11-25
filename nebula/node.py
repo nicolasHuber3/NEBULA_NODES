@@ -260,6 +260,7 @@ async def main(config):
     logging.info(f"Starting node {idx} with model {model_name}, trainer {trainer.__name__}, and as {node_cls.__name__}")
 
     node = node_cls(model=model, dataset=dataset, config=config, trainer=trainer, security=False, model_poisoning=model_poisoning, poisoned_ratio=poisoned_ratio, noise_type=noise_type)
+    import pdb; pdb.set_trace()
     await node.start_communications()
     await node.deploy_federation()
 
@@ -282,6 +283,7 @@ async def main(config):
 
 
 if __name__ == "__main__":
+    print("within node.py")
     config_path = str(sys.argv[1])
     config = Config(entity="participant", participant_config_file=config_path)
     if sys.platform == "win32" or config.participant["scenario_args"]["deployment"] == "docker":
