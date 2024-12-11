@@ -71,7 +71,6 @@ class Engine:
         poisoned_ratio=0,
         noise_type="gaussian",
     ):
-        import pdb; pdb.set_trace()
         self.config = config
         self.idx = config.participant["device_args"]["idx"]
         self.experiment_name = config.participant["scenario_args"]["name"]
@@ -332,6 +331,7 @@ class Engine:
             logging.info(f"💤  Waiting until receiving the start signal from the start node")
 
     async def _start_learning(self):
+        print("START LEARNING")
         await self.learning_cycle_lock.acquire_async()
         try:
             if self.round is None:
