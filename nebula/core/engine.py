@@ -417,6 +417,35 @@ class Engine:
             self.trainer.set_model_parameters(params)
         else:
             logging.error(f"Aggregation finished with no parameters")
+    
+    async def _send_tensorboard_files(last_file):
+            print("SENDING FILES TO CONTROLLER")
+            log_dir = f"{self.log_dir}/metrics/participant_{self.idx}"
+            content = os.listdir(log_dir)
+            content.sort()
+            if len(content) > 0:
+                if not last_file:
+                    files_to_send = content
+                    last_file = content[-2] if len(content) > 1 and content[-1].endswith(".yaml") else content[-1]
+                else:
+                    index_of_last_file = content.index(last_file)
+                    files_to_send = content[index_of_last_file+1:]
+                    last_file = content[-2] if len(content) > 1 and content[-1].endswith(".yaml") else content[-1]
+            
+            print(f"FILES TO SEND: {files_to_send}")
+            files_to_upload = []
+            print("PREPARING AND SENDING FILES TO CONTROLLER")
+            for file_to_send in files_to_send:
+                path = f"{self.log_dir}/metrics/participant_{self.idx}/{file_to_send}"
+                with open(path, "rb") as f:
+                    files_to_upload.append(("files", (path, f.read())))
+            response = requests.post(f"http://{self.controller}/nebula/controller/upload-event-files", files=files_to_upload)
+            
+            if response.status_code == 200:
+                print(f"SUCCESSFULLY SEND FILES TO CONTROLLER")
+            else:
+                print("ERROR WHEN SENDING FILES TO CONROLLER")
+            return last_file
 
     async def _learning_cycle(self):
         last_file = None
@@ -437,41 +466,7 @@ class Engine:
             print_msg_box(msg=f"Round {self.round} of {self.total_rounds} finished.", indent=2, title="Round information")
             await self.aggregator.reset()
             self.trainer.on_round_end()
-            
-            #SEND TENSORBOARD EVENT FILES
-            print("SENDING FILES TO CONTROLLER")
-            log_dir = f"{self.log_dir}/metrics/participant_{self.idx}"
-            print(log_dir)
-            content = os.listdir(log_dir)
-            content.sort()
-            print(content)
-            if len(content) > 0:
-                if not last_file:
-                    files_to_send = content
-                    last_file = content[-2] if len(content) > 1 and content[-1].endswith(".yaml") else content[-1]
-                else:
-                    index_of_last_file = content.index(last_file)
-                    files_to_send = content[index_of_last_file+1:]
-                    last_file = content[-2] if len(content) > 1 and content[-1].endswith(".yaml") else content[-1]
-            
-            logging.info(f"FILES TO SEND: {files_to_send}")
-            print(f"FILES TO SEND: {files_to_send}")
-            
-            files_to_upload = []
-            
-            print("PREPARING AND SENDING FILES TO CONTROLLER")
-            for file_to_send in files_to_send:
-                path = f"{self.log_dir}/metrics/participant_{self.idx}/{file_to_send}"
-                with open(path, "rb") as f:
-                    files_to_upload.append(("files", (path, f.read())))
-            response = requests.post(f"http://{self.controller}/nebula/controller/upload-event-files", files=files_to_upload)
-            
-            if response.status_code == 200:
-                print(f"SUCCESSFULLY SEND FILES TO CONTROLLER")
-            else:
-                print("ERROR WHEN SENDING FILES TO CONROLLER")
-            
-            
+            last_file = self._send_tensorboard_files(last_file)
             self.round = self.round + 1
             self.config.participant["federation_args"]["round"] = self.round  # Set current round in config (send to the controller)
             await self.get_round_lock().release_async()
