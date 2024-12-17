@@ -466,7 +466,7 @@ class Engine:
             print_msg_box(msg=f"Round {self.round} of {self.total_rounds} finished.", indent=2, title="Round information")
             await self.aggregator.reset()
             self.trainer.on_round_end()
-            last_file = self._send_tensorboard_files(last_file)
+            last_file = await self._send_tensorboard_files(last_file)
             self.round = self.round + 1
             self.config.participant["federation_args"]["round"] = self.round  # Set current round in config (send to the controller)
             await self.get_round_lock().release_async()
