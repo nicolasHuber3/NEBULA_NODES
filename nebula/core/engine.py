@@ -418,7 +418,7 @@ class Engine:
         else:
             logging.error(f"Aggregation finished with no parameters")
     
-    async def _send_tensorboard_files(last_file):
+    async def _send_tensorboard_files(self, last_file):
             print("SENDING FILES TO CONTROLLER")
             log_dir = f"{self.log_dir}/metrics/participant_{self.idx}"
             content = os.listdir(log_dir)
