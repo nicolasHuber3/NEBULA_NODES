@@ -6,7 +6,11 @@ import aiohttp
 import sys
 import psutil
 import os
+import subprocess
 from typing import TYPE_CHECKING
+from pathlib import Path
+import pandas as pd
+from nebula.addons.TC66C import TC66C
 
 if TYPE_CHECKING:
     from nebula.core.network.communications import CommunicationsManager
@@ -14,6 +18,7 @@ if TYPE_CHECKING:
 
 class Reporter:
     def __init__(self, config, trainer, cm: "CommunicationsManager"):
+        print("Starting reporter module")
         logging.info(f"Starting reporter module")
         self.config = config
         self.trainer = trainer
@@ -34,13 +39,27 @@ class Reporter:
         self.acc_bytes_recv = 0
         self.acc_packets_sent = 0
         self.acc_packets_recv = 0
+        
+        self.tc66c = None
+        self.energy_log_file = "energy_report.csv"
+        self.last_energy_timestamp = 0
+        self._cumulative_energy = 0
 
     async def enqueue_data(self, name, value):
         await self.data_queue.put((name, value))
 
     async def start(self):
         await asyncio.sleep(self.grace_time)
+        print("Executing energy reporter")
+        try:
+            self.tc66c = TC66C(self.trainer.logger, "/dev/ttyACM0")
+        except Exception as e:
+            print(f"Failed to initialize TC66C: {e}")
+        #process = subprocess.Popen(["python3", "physical/TC66C.py", "/dev/ttyACM0", self.energy_log_file])
+        print("ENergy manager started reporting")
+        asyncio.create_task(self.tc66c.start())
         asyncio.create_task(self.run_reporter())
+        
 
     async def run_reporter(self):
         while True:
@@ -152,6 +171,11 @@ class Reporter:
         self.acc_bytes_recv += bytes_recv_diff
         self.acc_packets_sent += packets_sent_diff
         self.acc_packets_recv += packets_recv_diff
+        
+        power = self.tc66c.current_power()
+        print(f"current power being reported: {power}")
+        energy = self.tc66c.cumulative_energy()
+        print(f"current energy: {energy}")
 
         current_connections = await self.cm.get_addrs_current_connections(only_direct=True)
 
@@ -169,6 +193,8 @@ class Reporter:
             "Network/Network (packets sent)": self.acc_packets_sent,
             "Network/Network (packets received)": self.acc_packets_recv,
             "Network/Connections": len(current_connections),
+            "Power/Power Consumption (W)": power,
+			"Power/Total Energy (J)": energy,
         }
         self.trainer.logger.log_data(resources)
 
@@ -200,3 +226,20 @@ class Reporter:
                     self.trainer.logger.log_data(gpu_info)
             except Exception:
                 pass
+        
+        
+    def log_detailed_power_consumption(self):
+        if not self.tc66c:
+            return
+        
+        step = 1
+        for measurement in self.tc66c.detailed_power_consumption():
+            print(f"step: {step}, detailed power: {measurement}")
+            resources = {
+                "Power/Detailed Power Consumption (W)": measurement,
+            }
+            self.trainer.logger.log_data(resources, step=step)
+            step+=1
+            
+                
+    

@@ -465,6 +465,7 @@ class Engine:
             await self.get_round_lock().acquire_async()
             print_msg_box(msg=f"Round {self.round} of {self.total_rounds} finished.", indent=2, title="Round information")
             await self.aggregator.reset()
+            #self._reporter.log_energy_consumption()
             self.trainer.on_round_end()
             last_file = await self._send_tensorboard_files(last_file)
             self.round = self.round + 1
@@ -484,7 +485,11 @@ class Engine:
                 pass
             else:
                 logging.error(f"Error reporting scenario finished")
-
+        
+        if self.config.participant["scenario_args"]["deployment"] == "physical":
+            self._reporter.log_detailed_power_consumption()
+            await self._send_tensorboard_files(last_file)
+        
         logging.info(f"Checking if all my connections reached the total rounds...")
         while not self.cm.check_finished_experiment():
             await asyncio.sleep(1)
