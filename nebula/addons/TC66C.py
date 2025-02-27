@@ -75,6 +75,7 @@ class TC66C:
 			sleep(1.0)
 		except Exception as e:
 			print(f"failed to open {port_dev} : {e}")
+			raise Exception(e)
 		
 		self._AES = AES.new(bytes(STATIC_KEY),AES.MODE_ECB)
 

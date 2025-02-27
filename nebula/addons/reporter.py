@@ -53,11 +53,9 @@ class Reporter:
         print("Executing energy reporter")
         try:
             self.tc66c = TC66C(self.trainer.logger, "/dev/ttyACM0")
+            asyncio.create_task(self.tc66c.start())
         except Exception as e:
             print(f"Failed to initialize TC66C: {e}")
-        #process = subprocess.Popen(["python3", "physical/TC66C.py", "/dev/ttyACM0", self.energy_log_file])
-        print("ENergy manager started reporting")
-        asyncio.create_task(self.tc66c.start())
         asyncio.create_task(self.run_reporter())
         
 
@@ -86,9 +84,11 @@ class Reporter:
                 async with session.post(url, data=data, headers=headers) as response:
                     if response.status != 200:
                         logging.error(f"Error received from controller: {response.status} (probably there is overhead in the controller, trying again in the next round)")
+                        print(f"Error received from controller: {response.status} (probably there is overhead in the controller, trying again in the next round)")
                         text = await response.text()
                         logging.debug(text)
                     else:
+                        print(f"Participant {self.config.participant['device_args']['idx']} reported scenario finished")
                         logging.info(f"Participant {self.config.participant['device_args']['idx']} reported scenario finished")
                         return True
         except aiohttp.ClientError as e:
@@ -172,10 +172,6 @@ class Reporter:
         self.acc_packets_sent += packets_sent_diff
         self.acc_packets_recv += packets_recv_diff
         
-        power = self.tc66c.current_power()
-        print(f"current power being reported: {power}")
-        energy = self.tc66c.cumulative_energy()
-        print(f"current energy: {energy}")
 
         current_connections = await self.cm.get_addrs_current_connections(only_direct=True)
 
@@ -193,9 +189,14 @@ class Reporter:
             "Network/Network (packets sent)": self.acc_packets_sent,
             "Network/Network (packets received)": self.acc_packets_recv,
             "Network/Connections": len(current_connections),
-            "Power/Power Consumption (W)": power,
-			"Power/Total Energy (J)": energy,
         }
+        
+        if self.tc66c:
+            power = self.tc66c.current_power()
+            energy = self.tc66c.cumulative_energy()
+            resources["Power/Power Consumption (W)"] = power
+            resources["Power/Total Energy (J)"] = energy
+        
         self.trainer.logger.log_data(resources)
 
         if importlib.util.find_spec("pynvml") is not None:

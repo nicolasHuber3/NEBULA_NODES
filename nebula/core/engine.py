@@ -503,6 +503,8 @@ class Engine:
                 self.client.containers.get(self.docker_id).stop()
             except Exception as e:
                 print(f"Error stopping Docker container with ID {self.docker_id}: {e}")
+        elif self.config.participant["scenario_args"]["deployment"] == "physical":
+            sys.exit("Exiting NEBULA")
 
     async def _extended_learning_cycle(self):
         """
