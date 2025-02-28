@@ -327,6 +327,11 @@ class Engine:
                 logging.info(f"Federation already started")
 
         else:
+            # we can only send 'FEDERATION_READY' when the connection to start node is established otherwise we will be stuck
+            ip_start_node = f"{self.config.participant['network_args']['ip_start']}:8000"
+            while not ip_start_node in self.cm.connections:
+                print(self.cm.onnections)
+                await asyncio.sleep(1)
             logging.info(f"Sending FEDERATION_READY to neighbors...")
             message = self.cm.mm.generate_federation_message(nebula_pb2.FederationMessage.Action.FEDERATION_READY)
             await self.cm.send_message_to_neighbors(message)
