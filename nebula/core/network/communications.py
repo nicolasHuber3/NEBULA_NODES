@@ -141,7 +141,7 @@ class CommunicationsManager:
                 print(f"INCOMING MESSAGE IS FEDERATION_MESSAGE with action: {message_wrapper.federation_message.action} from: {source}")
                 is_federation_ready_msg = message_wrapper.federation_message.action == nebula_pb2.FederationMessage.Action.Value("FEDERATION_READY")
                 if await self.include_received_message_hash(hashlib.md5(data).hexdigest()):
-                    if self.config.participant["device_args"]["proxy"] or message_wrapper.federation_message.action == nebula_pb2.FederationMessage.Action.Value("FEDERATION_START"):# or is_federation_ready_msg:
+                    if self.config.participant["device_args"]["proxy"] or message_wrapper.federation_message.action == nebula_pb2.FederationMessage.Action.Value("FEDERATION_START") or is_federation_ready_msg:
                         logging.info(f"FORWARDING FEDERATION MESSAGE FROM: {message_wrapper.source}")
                         await self.forwarder.forward(data, addr_from=addr_from)
                     await self.handle_federation_message(source, message_wrapper.federation_message)
